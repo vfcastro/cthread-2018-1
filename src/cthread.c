@@ -7,8 +7,8 @@
 
 #define SUCCESS 0
 #define ERROR -1
-#define UPDATE_CTX_TRUE 1
-#define UPDATE_CTX_FALSE 0
+#define UPDATE_CTX_TRUE 0
+#define UPDATE_CTX_FALSE -1
 
 
 FILA2	APTO;
@@ -17,14 +17,14 @@ int	CTHREAD_INIT = 0;
 int TID = 1;
 ucontext_t sched_ctx;
 
+
 //##########################
 // FUNCOES AUXILIARES
 //##########################
 
 //========================
 
-int move_thread(PFILA2 origem, PFILA2 destino, int novoEstado, int atualizaCtx){
-	printf("move_thread()\n");
+int move_thread(PFILA2 origem, PFILA2 destino, int novoEstado, int updateCtx){
 	// Recupera o TCB da fila ORIGEM
 	if(FirstFila2(origem) != SUCCESS){
     	printf("move_thread(): FirstFila2(origem) failed!\n");
@@ -59,14 +59,14 @@ int move_thread(PFILA2 origem, PFILA2 destino, int novoEstado, int atualizaCtx){
   		return ERROR;
 	}
 	
-	// Atualiza estado e contexto da thread no TCB
+	// Atualiza estado e contexto da thread no TCB (nao atualiza o contexto quando for a main
 	tcb->state = novoEstado;
-	if(UPDATE_CTX_TRUE){
+	if(updateCtx == UPDATE_CTX_TRUE)
 		if(getcontext(&(tcb->context)) == ERROR){
 			printf("move_thread(): getcontext(&(tcb->context)) failed!");
 			return ERROR;
-		}		
-	}
+		}
+
 
 	return SUCCESS;
 }
@@ -92,19 +92,12 @@ void print_queue(PFILA2 fila, char* name){
 //========================
 
 void sched(){
-	printf("sched()\n");
 	PNODE2 nodeFila;	
 	TCB_t *tcb;
 
-	print_queue(&APTO,"APTO");
-	print_queue(&EXEC,"EXEC");
-
 	// Move primeira thread de APTO para EXEC
     if(move_thread(&APTO,&EXEC,PROCST_EXEC,UPDATE_CTX_FALSE) != SUCCESS)
-		printf("sched(): move_thread(&APTO,&EXEC,PROCST_EXEC,UPDATE_CTX_FALSE) failed!");
-
-	print_queue(&APTO,"APTO");
-	print_queue(&EXEC,"EXEC");
+		printf("sched(): move_thread(&APTO,&EXEC,PROCST_EXEC) failed!");
 
 	// Muda para o contexto de EXEC
 	if(FirstFila2(&EXEC) != SUCCESS)
@@ -115,8 +108,7 @@ void sched(){
 			printf("sched(): GetAtIteratorFila2(&EXEC) failed!");
 		else{
    			tcb = nodeFila->node;
-			printf("sched(): tcb->context.uc_stack.ss_size: %d\n",tcb->context.uc_stack.ss_size);
-			//setcontext(&(tcb->context));
+			setcontext(&(tcb->context));
 		}
 	}
 
@@ -124,7 +116,6 @@ void sched(){
 //========================
 
 int init(){
-	printf("init()\n");
 	// Cria contexto do dispatcher
 	char *stack = (char*)malloc(SIGSTKSZ);
     if(stack == NULL){
@@ -149,7 +140,7 @@ int init(){
 		return ERROR;
 	}
 
-	// Cria contexto da main
+	// Cria TCB da main
     PNODE2 nodeFila = (PNODE2)malloc(sizeof(NODE2));
     if(nodeFila == NULL){
 		printf("init(): malloc(sizeof(NODE2)) failed!");
@@ -161,14 +152,15 @@ int init(){
 		printf("init(): malloc(sizeof(TCB_t)) failed!");
     	return ERROR;
 	}
-    tcb->tid = 0;
-    tcb->state = PROCST_EXEC;
 
 	nodeFila->node = tcb;
 	if(AppendFila2(&EXEC,nodeFila) != SUCCESS){
 		printf("init(): AppendFila2(&EXEC,nodeFila) failed!");
   		return ERROR;
-	}	
+	}
+
+    tcb->tid = 0;
+    tcb->state = PROCST_EXEC;
 
 	CTHREAD_INIT = 1;
 
@@ -199,6 +191,7 @@ int get_tid(){
 
 int cidentify (char *name, int size){
 	printf("cidentify()\n");
+	// Inicializa cthread caso nao esteja
 	if(!CTHREAD_INIT)
 		if(init() == ERROR){
         	printf("cidentify(): init() failed!\n");
@@ -266,14 +259,19 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
 //========================
 
 int cyield(void){
-	printf("cyield()\n");
+	// Inicializa cthread caso nao esteja
+	if(!CTHREAD_INIT)
+		if(init() == ERROR){
+        	printf("cyield(): init() failed!\n");
+	    	return ERROR;		
+		}
+
 	// Move thread de EXEC para APTO
-	if(move_thread(&EXEC,&APTO,PROCST_APTO,UPDATE_CTX_FALSE) != SUCCESS){
+	if(move_thread(&EXEC,&APTO,PROCST_APTO,UPDATE_CTX_TRUE) != SUCCESS){
 		printf("cyield(): move_thread(&EXEC,&APTO,PROCST_APTO) failed!");
-  		return ERROR;
+		return ERROR;
 	}
 
-	// Se a fila EXEC esta vazia, chama o escalonador
 	if(FirstFila2(&EXEC) != SUCCESS)
 		setcontext(&sched_ctx);
 

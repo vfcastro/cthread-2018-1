@@ -18,8 +18,8 @@ int main(){
 //  id1 = ccreate((void *(*)(void*))func1, (void*)&id1, 0);
 //  printf("main(): id1: %d\n",id1);
 
-  if(cidentify(msg,sizeof(msg)) == 0)
-    printf("%s\n",msg);
+//  if(cidentify(msg,sizeof(msg)) == 0)
+//    printf("%s\n",msg);
 	
   printf("main(): cyield()\n");
   cyield();
