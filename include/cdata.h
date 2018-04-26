@@ -34,5 +34,9 @@ typedef struct s_TCB {
 	
 } TCB_t; 
 
+typedef struct s_JOIN {
+	int blocked_tid;
+	int joined_tid;
+} JOIN_t;
 
 #endif
