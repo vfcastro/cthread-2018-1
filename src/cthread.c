@@ -37,64 +37,51 @@ ucontext_t finish_ctx;
 //##########################
 
 //========================
-// Remove thread da fila ORIGEM pelo tid
-// Retorna o ponteiro para o TCB removido ou NULL
-void* remove_thread(int tid, PFILA2 origem, int SEARCH_BLOQ_JOIN){
-	// Posiciona iterador no inicio da fila ORIGEM
-	if(FirstFila2(origem) != SUCCESS){
-    	//printf("check_tid(): FirstFila2(origem) failed!\n");
-		return NULL;
-	}
-	
+// Move o TCB identificado por tid da fila origem para o fim da fila destino
+int move_thread_bytid(int tid, PFILA2 origem, PFILA2 destino, int novoEstado){
+	// Percorre fila ORIGEM pelo tid 
 	PNODE2 nodeFila;
 	TCB_t *tcb;
-	JOIN_t *join;
-	// Percorre a lista em busca pelo tid 
+	if(FirstFila2(origem) != SUCCESS){
+    	printf("move_thread_bytid(): FirstFila2(origem) failed!\n");
+		return ERROR;
+	}
+
 	do{
 		nodeFila = GetAtIteratorFila2(origem);
 		if(nodeFila == NULL){
-			printf("remove_thread(): GetAtIteratorFila2(origem) failed!");
-			return NULL;
+			printf("move_thread_bytid(): GetAtIteratorFila2(origem) failed!");
+			return ERROR;
 		}
-
-
-		// A busca se da em fila de TCB
-		if(SEARCH_BLOQ_JOIN == SEARCH_BLOQ_JOIN_FALSE){
-   			tcb = nodeFila->node;
-			// Encontrou o tid, remove TCB da fila e retorna endereco do TCB
-			if(tcb->tid == tid){	
-				// Remove TCB da fila ORIGEM
-				if(DeleteAtIteratorFila2(origem) != SUCCESS){
-					printf("remove_thread(): DeleteAtIteratorFila2(origem) failed!\n");
-					return NULL;
-				}			
-				// Retorna endereco do TCB
-				return tcb;
+		tcb = nodeFila->node;
+		// Encontrou o tid
+		if(tcb->tid == tid){	
+			// Remove TCB da fila ORIGEM
+			if(DeleteAtIteratorFila2(origem) != SUCCESS){
+				printf("move_thread_bytid(): DeleteAtIteratorFila2(origem) failed!\n");
+				return ERROR;
 			}
-		}
 
-		// A busca se da em fila de BLOQ_JOIN
-		if(SEARCH_BLOQ_JOIN == SEARCH_BLOQ_JOIN_TRUE){
-   			join = nodeFila->node;
-			// Encontrou o tid, retorna tid da thread bloqueada
-			if(join->blocked_tid == tid){
-				// Remove JOIN_t da fila BLOQ_JOIN
-				if(DeleteAtIteratorFila2(origem) != SUCCESS){
-					printf("remove_thread(): DeleteAtIteratorFila2(origem) failed!\n");
-					return NULL;
-				}			
-				// Retorna endereco do JOIN_t			
-				return join;
+			// Insere TCB da thread em DESTINO
+			PNODE2 nodeFilaNovo = (PNODE2)malloc(sizeof(NODE2));
+			if(nodeFilaNovo == NULL){
+				printf("move_thread_bytid(): malloc(sizeof(NODE2)) failed!\n");
+				return ERROR;
+			}    
+			nodeFilaNovo->node = tcb;
+			if(AppendFila2(destino,nodeFilaNovo) != SUCCESS){
+				printf("move_thread_bytid(): AppendFila2(destino,nodeFilaNovo) failed!\n");
+		  		return ERROR;
 			}
+			// Atualiza estado da thread no TCB
+			tcb->state = novoEstado;
 		}
-
 	}	
-	while(NextFila2(origem) == SUCCESS);
+	while(tcb->tid != tid && NextFila2(origem) == SUCCESS);
 
-	// Nao encontrou, retorna erro
-	return NULL;
-
+	return SUCCESS;
 }
+
 
 //========================
 // Checa se um tid existe na fila origem
@@ -174,6 +161,46 @@ void finish(){
 		exit(ERROR);
 	}
 
+	
+	// Checa se ha alguma thread bloqueada em join aguardando o termino de EXEC
+	int blocked_tid = check_tid(tcb->tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE);
+	if( blocked_tid != ERROR){
+		// Thread blocked_tid esta bloqueada pela thread em EXEC. Deve-se:
+		// Remover entrada da fila BLOQ_JOIN
+		// Mover a thread blocked_tid de BLOQ -> APTO ou BLOQ_SUS -> APTO_SUS
+
+		// Remove entrada da fila BLOQ_JOIN. Iterador ja esta no node blocked_tid
+		PNODE2 nodeFila = GetAtIteratorFila2(&BLOQ_JOIN);
+		if(nodeFila == NULL){
+			printf("finish(): GetAtIteratorFila2(&BLOQ_JOIN) failed!\n");
+			exit(ERROR);
+		}
+		JOIN_t *join_node = nodeFila->node;
+		if(DeleteAtIteratorFila2(&BLOQ_JOIN) != SUCCESS){
+			printf("finish(): DeleteAtIteratorFila2(&BLOQ_JOIN) failed!\n");
+			exit(ERROR);
+		}		
+		// Libera memoria node fila BLOQ_JOIN
+		free(join_node);
+
+		// Caso em BLOQ, move de BLOQ -> APTO
+		if(check_tid(blocked_tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+			if(move_thread_bytid(blocked_tid,&BLOQ,&APTO,PROCST_APTO) != SUCCESS){
+				printf("finish(): move_thread_bytid(blocked_tid,&BLOQ,&APTO,PROCST_APTO) failed!\n");
+				exit(ERROR);
+			}
+		}
+		// Caso em BLOQ, move de BLOQ_SUS -> APTO_SUS
+		else{
+			if(check_tid(blocked_tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS)
+				if(move_thread_bytid(blocked_tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) != SUCCESS){
+					printf("finish(): move_thread_bytid(blocked_tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) failed!\n");
+					exit(ERROR);
+				}
+		}	
+	}
+
+
 	// Remove TCB da fila EXEC
 	if(FirstFila2(&EXEC) != SUCCESS){
     	printf("finish(): FirstFila2(&EXEC) failed!\n");
@@ -183,68 +210,15 @@ void finish(){
 		printf("finish(): DeleteAtIteratorFila2(&EXEC) failed!");
 		exit(ERROR);
 	}
-
-	// Checa se ha alguma thread bloqueada em join aguardando o termino de EXEC
-	PNODE2 nodeFilaNovo;
-	TCB_t *blocked_tcb;
-	JOIN_t *join;
-	int blocked_tid = check_tid(tcb->tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE);
-	if( blocked_tid != ERROR){
-		// Thread blocked_tid esta bloqueada ou na fila BLOQ ou BLOQ_SUS
-		// Remove entrada da fila BLOQ_JOIN
-		join = remove_thread(blocked_tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE);
-		if(join == NULL){
-			printf("finish(): remove_thread(blocked_tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE) failed!\n");
-			exit(ERROR);
-		}
-	
-
-		// Caso em BLOQ, remove de BLOQ e insere em APTO
-		blocked_tcb = (TCB_t*)remove_thread(blocked_tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE);
-		if(blocked_tcb != NULL){
-			// Insere em APTO
-			nodeFilaNovo = (PNODE2)malloc(sizeof(NODE2));
-			if(nodeFilaNovo == NULL){
-				printf("finish(): malloc(sizeof(NODE2)) failed!\n");
-				exit(ERROR);
-			}    
-			nodeFilaNovo->node = tcb;
-			if(AppendFila2(&APTO,nodeFilaNovo) != SUCCESS){
-				printf("move_thread(): AppendFila2(&APTO,nodeFilaNovo) failed!\n");
-		  		exit(ERROR);
-			}
-			tcb->state = PROCST_APTO;
-
-		}
-		// Caso em BLOQ_SUS, remove de BLOQ_SUS e insere em APTO_SUS
-		else{
-			blocked_tcb = (TCB_t*)remove_thread(blocked_tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE);
-			if(blocked_tcb != NULL){
-				// Insere em APTO_SUS
-				nodeFilaNovo = (PNODE2)malloc(sizeof(NODE2));
-				if(nodeFilaNovo == NULL){
-					printf("finish(): malloc(sizeof(NODE2)) failed!\n");
-					exit(ERROR);
-				}    
-				nodeFilaNovo->node = tcb;
-				if(AppendFila2(&APTO_SUS,nodeFilaNovo) != SUCCESS){
-					printf("move_thread(): AppendFila2(&APTO_SUS,nodeFilaNovo) failed!\n");
-			  		exit(ERROR);
-				}
-				tcb->state = PROCST_APTO_SUS;
-			}
-		}	
-	}
 	
 	// Libera a memoria alocada
 	free(tcb->context.uc_stack.ss_sp);
 	free(tcb);
-	free(join);
 
 	// Chama o escalonador
 	setcontext(&sched_ctx);
-	
 }
+
 
 //========================
 // Move o primeiro da fila origem para o fim da fila destino
@@ -545,14 +519,7 @@ int cjoin(int tid){
 		return ERROR;
 	}
 
-	// Move thread de EXEC para BLOQ
-	if(move_thread(&EXEC,&BLOQ,PROCST_BLOQ) != SUCCESS){
-		printf("cjoin(): move_thread(&EXEC,&BLOQ,PROCST_BLOQ) failed!");
-		return ERROR;
-	}
-
 	// Inclui tid na fila de bloqueados por join (BLOQ_JOIN):
-
 	// Aloca e inicializa struct de bloqueados por join (JOIN_t)
 	JOIN_t *join = (JOIN_t*)malloc(sizeof(JOIN_t));
     if(join == NULL){
@@ -572,6 +539,12 @@ int cjoin(int tid){
 	if(AppendFila2(&BLOQ_JOIN,nodeFila) != SUCCESS){
 		printf("cjoin(): AppendFila2(&BLOQ_JOIN,nodeFila) failed!");
   		return ERROR;
+	}
+
+	// Move thread de EXEC para BLOQ
+	if(move_thread(&EXEC,&BLOQ,PROCST_BLOQ) != SUCCESS){
+		printf("cjoin(): move_thread(&EXEC,&BLOQ,PROCST_BLOQ) failed!");
+		return ERROR;
 	}
 
 	// Salva contexto da thread atual no TCB
