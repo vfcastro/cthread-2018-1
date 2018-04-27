@@ -1,24 +1,29 @@
 #include "../include/cthread.h"
 #include <stdio.h>
 
-void func0(int *arg) {
-	printf("Eu sou a thread ID %d\n", *((int *)arg));
+void func1(int *tids) {
+	printf("Eu sou a thread ID %d fazendo join na thread ID %d\n", tids[0], tids[1]);
+	cjoin(tids[1]);
+	printf("Eu sou a thread ID %d terminando\n", tids[0]);
 }
 
-void func1(int *arg) {
-	printf("Eu sou a thread ID %d\n", *((int *)arg));
+void func2(int *tids) {
+	printf("Eu sou a thread ID %d terminando\n", tids[1]);
 }
 
 int main(){
-	int id0, id1;
+	int tids[2];	
 
-	id0 = ccreate((void *(*)(void*))func0, (void*)&id0, 0);
-	printf("main(): id0: %d\n",id0);
-	id1 = ccreate((void *(*)(void*))func1, (void*)&id1, 0);
-	printf("main(): id1: %d\n",id1);
+	tids[0] = ccreate((void *(*)(void*))func1, (void*)&tids, 0);
+	printf("main(): id1: %d\n",tids[0]);
 
+	tids[1] = ccreate((void *(*)(void*))func2, (void*)&tids, 0);
+	printf("main(): id2: %d\n",tids[1]);
+
+	printf("main(): cjoin(%d)\n",tids[0]);
+	cjoin(tids[0]);
 	
- 	printf("main(): retorno cyield(): %d\n",cjoin(2));	
+ 	printf("main(): retorno cjoin()\n");	
 
     return 0;
 }
