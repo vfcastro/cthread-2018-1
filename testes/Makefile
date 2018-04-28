@@ -1,7 +1,9 @@
 LIB_DIR=../lib/
 
-all: cyield ccreate cjoin
+all: cyield ccreate cjoin csuspend
 
+csuspend:
+	gcc -o csuspend csuspend.c -L$(LIB_DIR) -lcthread -Wall
 cjoin:
 	gcc -o cjoin cjoin.c -L$(LIB_DIR) -lcthread -Wall
 cyield:
@@ -9,4 +11,4 @@ cyield:
 ccreate:
 	gcc -o ccreate ccreate.c -L$(LIB_DIR) -lcthread -Wall
 clean:
-	rm -rf cyield ccreate cjoin
+	rm -rf cyield ccreate cjoin csuspend

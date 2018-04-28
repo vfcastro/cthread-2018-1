@@ -190,7 +190,7 @@ void finish(){
 				exit(ERROR);
 			}
 		}
-		// Caso em BLOQ, move de BLOQ_SUS -> APTO_SUS
+		// Caso em BLOQ_SUS, move de BLOQ_SUS -> APTO_SUS
 		else{
 			if(check_tid(blocked_tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS)
 				if(move_thread_bytid(blocked_tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) != SUCCESS){
@@ -562,8 +562,38 @@ int cjoin(int tid){
 }
 //========================
 
+int csuspend(int tid){
+	// Inicializa cthread caso nao esteja
+	if(!CTHREAD_INIT){
+		if(init() == ERROR){
+        	printf("cjoin(): init() failed!\n");
+	    	return ERROR;		
+		}
+	}
 
+	// Checa se o tid existe na fila APTO
+	if(check_tid(tid,&APTO,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+		// Encontrou o tid na fila APTO. Move para fila APTO_SUS
+		if(move_thread_bytid(tid,&APTO,&APTO_SUS,PROCST_APTO_SUS) == ERROR){
+			printf("csuspend(): move_thread_bytid(tid,&APTO,&APTO_SUS,PROCST_APTO_SUS) failed!\n");
+			return ERROR;
+		}
+	}
 
+	// Checa se o tid existe na fila BLOQ
+	if(check_tid(tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+		// Encontrou o tid na fila BLOQ. Move para fila BLOQ_SUS
+		if(move_thread_bytid(tid,&BLOQ,&BLOQ_SUS,PROCST_BLOQ_SUS) == ERROR){
+			printf("csuspend(): move_thread_bytid(tid,&BLOQ,&BLOQ_SUS,PROCST_BLOQ_SUS) failed!\n");
+			return ERROR;
+		}
+	}
+
+	// Nao encontrou o tid em APTO ou BLOQ para suspender. Retorna ERRO
+	return ERROR;
+
+}
+//========================
 
 
 
