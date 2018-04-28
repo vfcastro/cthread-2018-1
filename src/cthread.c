@@ -595,6 +595,39 @@ int csuspend(int tid){
 }
 //========================
 
+int cresume(int tid){
+	// Inicializa cthread caso nao esteja
+	if(!CTHREAD_INIT){
+		if(init() == ERROR){
+        	printf("cjoin(): init() failed!\n");
+	    	return ERROR;		
+		}
+	}
+
+	// Checa se o tid existe na fila APTO_SUS
+	if(check_tid(tid,&APTO_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+		// Encontrou o tid na fila APTO_SUS. Move para fila APTO
+		if(move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) == ERROR){
+			printf("csuspend(): move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) failed!\n");
+			return ERROR;
+		}
+	}
+
+	// Checa se o tid existe na fila BLOQ_SUS
+	if(check_tid(tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+		// Encontrou o tid na fila BLOQ_SUS. Move para fila BLOQ
+		if(move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) == ERROR){
+			printf("csuspend(): move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) failed!\n");
+			return ERROR;
+		}
+	}
+
+	// Nao encontrou o tid em APTO_SUS ou BLOQ_SUS para resumir. Retorna ERRO
+	return ERROR;
+
+}
+//========================
+
 
 
 
