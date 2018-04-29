@@ -14,6 +14,8 @@
 #define ERROR -1
 #define SEARCH_BLOQ_JOIN_TRUE 0
 #define SEARCH_BLOQ_JOIN_FALSE -1
+#define SEARCH_BLOQ_SEM_TRUE 0
+#define SEARCH_BLOQ_SEM_FALSE -1
 
 // Filas de estado
 FILA2	APTO;
@@ -87,7 +89,9 @@ int move_thread_bytid(int tid, PFILA2 origem, PFILA2 destino, int novoEstado){
 // Checa se um tid existe na fila origem
 // SEARCH_BLOQ_JOIN_FALSE busca em fila de estados, retorna SUCCESS ou ERROR
 // SEARCH_BLOQ_JOIN_TRUE busca em fila do tipo BLOQ_JOIN (reuso de codigo) e retorna o blocked_tid ou ERROR
-int check_tid(int tid, PFILA2 origem, int SEARCH_BLOQ_JOIN){
+// SEARCH_BLOQ_SEM_FALSE busca em fila de estados, retorna SUCCESS ou ERROR
+// SEARCH_BLOQ_SEM_TRUE busca em fila de semaforos (reuso de codigo) e retorna o tid ou ERROR
+int check_tid(int tid, PFILA2 origem, int SEARCH_BLOQ_JOIN, int SEARCH_BLOQ_SEM){
 	// Seta o iterador no inicio da fila ORIGEM
 	if(FirstFila2(origem) != SUCCESS){
     	//printf("check_tid(): FirstFila2(origem) failed!\n");
@@ -106,7 +110,8 @@ int check_tid(int tid, PFILA2 origem, int SEARCH_BLOQ_JOIN){
 		}
 
 		// A busca se da em fila de TCB
-		if(SEARCH_BLOQ_JOIN == SEARCH_BLOQ_JOIN_FALSE){
+		if(SEARCH_BLOQ_JOIN == SEARCH_BLOQ_JOIN_FALSE && 
+			SEARCH_BLOQ_SEM == SEARCH_BLOQ_SEM_FALSE){
    			tcb = nodeFila->node;
 			// Encontrou o tid, retorna sucesso
 			if(tcb->tid == tid)
@@ -163,7 +168,7 @@ void finish(){
 
 	
 	// Checa se ha alguma thread bloqueada em join aguardando o termino de EXEC
-	int blocked_tid = check_tid(tcb->tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE);
+	int blocked_tid = check_tid(tcb->tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE,SEARCH_BLOQ_SEM_FALSE);
 	if( blocked_tid != ERROR){
 		// Thread blocked_tid esta bloqueada pela thread em EXEC. Deve-se:
 		// Remover entrada da fila BLOQ_JOIN
@@ -184,7 +189,7 @@ void finish(){
 		free(join_node);
 
 		// Caso em BLOQ, move de BLOQ -> APTO
-		if(check_tid(blocked_tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+		if(check_tid(blocked_tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 			if(move_thread_bytid(blocked_tid,&BLOQ,&APTO,PROCST_APTO) != SUCCESS){
 				printf("finish(): move_thread_bytid(blocked_tid,&BLOQ,&APTO,PROCST_APTO) failed!\n");
 				exit(ERROR);
@@ -192,7 +197,7 @@ void finish(){
 		}
 		// Caso em BLOQ_SUS, move de BLOQ_SUS -> APTO_SUS
 		else{
-			if(check_tid(blocked_tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS)
+			if(check_tid(blocked_tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS)
 				if(move_thread_bytid(blocked_tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) != SUCCESS){
 					printf("finish(): move_thread_bytid(blocked_tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) failed!\n");
 					exit(ERROR);
@@ -501,15 +506,15 @@ int cjoin(int tid){
 	}
 
 	// Checa se o tid existe nas filas de estados
-	if(check_tid(tid,&APTO,SEARCH_BLOQ_JOIN_FALSE) == ERROR &&
-		check_tid(tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE) == ERROR &&
-		check_tid(tid,&APTO_SUS,SEARCH_BLOQ_JOIN_FALSE) == ERROR &&
-		check_tid(tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE) == ERROR)
+	if(check_tid(tid,&APTO,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == ERROR &&
+		check_tid(tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == ERROR &&
+		check_tid(tid,&APTO_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == ERROR &&
+		check_tid(tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == ERROR)
 		// Nao encontrou o tid em nenhuma fila
 		return ERROR;
 
 	// Checa se ha outra thread bloqueada pelo mesmo tid
-	if(check_tid(tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE) != ERROR)
+	if(check_tid(tid,&BLOQ_JOIN,SEARCH_BLOQ_JOIN_TRUE,SEARCH_BLOQ_SEM_FALSE) != ERROR)
 		return ERROR;
 
 	// Recupera TCB da thread em EXEC
@@ -572,21 +577,23 @@ int csuspend(int tid){
 	}
 
 	// Checa se o tid existe na fila APTO
-	if(check_tid(tid,&APTO,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+	if(check_tid(tid,&APTO,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 		// Encontrou o tid na fila APTO. Move para fila APTO_SUS
 		if(move_thread_bytid(tid,&APTO,&APTO_SUS,PROCST_APTO_SUS) == ERROR){
 			printf("csuspend(): move_thread_bytid(tid,&APTO,&APTO_SUS,PROCST_APTO_SUS) failed!\n");
 			return ERROR;
 		}
+		else return SUCCESS;
 	}
 
 	// Checa se o tid existe na fila BLOQ
-	if(check_tid(tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+	if(check_tid(tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 		// Encontrou o tid na fila BLOQ. Move para fila BLOQ_SUS
 		if(move_thread_bytid(tid,&BLOQ,&BLOQ_SUS,PROCST_BLOQ_SUS) == ERROR){
 			printf("csuspend(): move_thread_bytid(tid,&BLOQ,&BLOQ_SUS,PROCST_BLOQ_SUS) failed!\n");
 			return ERROR;
 		}
+		else return SUCCESS;
 	}
 
 	// Nao encontrou o tid em APTO ou BLOQ para suspender. Retorna ERRO
@@ -605,21 +612,23 @@ int cresume(int tid){
 	}
 
 	// Checa se o tid existe na fila APTO_SUS
-	if(check_tid(tid,&APTO_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+	if(check_tid(tid,&APTO_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 		// Encontrou o tid na fila APTO_SUS. Move para fila APTO
 		if(move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) == ERROR){
 			printf("csuspend(): move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) failed!\n");
 			return ERROR;
 		}
+		else return SUCCESS;
 	}
 
 	// Checa se o tid existe na fila BLOQ_SUS
-	if(check_tid(tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE) == SUCCESS){
+	if(check_tid(tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 		// Encontrou o tid na fila BLOQ_SUS. Move para fila BLOQ
 		if(move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) == ERROR){
 			printf("csuspend(): move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) failed!\n");
 			return ERROR;
 		}
+		else return SUCCESS;
 	}
 
 	// Nao encontrou o tid em APTO_SUS ou BLOQ_SUS para resumir. Retorna ERRO
@@ -629,9 +638,166 @@ int cresume(int tid){
 //========================
 
 
+int csem_init(csem_t *sem, int count){
+	// Inicializa cthread caso nao esteja
+	if(!CTHREAD_INIT)
+		if(init() == ERROR){
+        	printf("ccreate(): init() failed!\n");
+	    	return ERROR;		
+		}	
+
+	// Aloca memoria para a fila do semaforo
+	PFILA2 fila = (PFILA2)malloc(sizeof(FILA2));
+	if(fila == NULL){
+		printf("csem_init(): (PFILA)malloc(sizeof(FILA2) failed!\n");
+		return ERROR;
+	}
+	sem->fila = fila;
+
+	// Inicializa fila do semaforo
+	if(CreateFila2(sem->fila) != SUCCESS){
+    	printf("csem_init(): CreateFila2(sem->fila) failed!\n");
+		return ERROR;
+	}
+	// Inicializa contador
+	sem->count = count;
+
+	return SUCCESS;
+}
+//========================
+
+int cwait(csem_t *sem){
+	// Inicializa cthread caso nao esteja
+	if(!CTHREAD_INIT)
+		if(init() == ERROR){
+        	printf("ccreate(): init() failed!\n");
+	    	return ERROR;		
+		}
+
+	
+	// Se o semaforo esta livre, decrementa e segue execucao
+	if(sem->count >0){
+		sem->count = sem->count - 1;
+		return SUCCESS;
+	}
+	else{
+		// Semaforo ocupado:
+		// - Decrementa semaforo
+		sem->count = sem->count - 1;
+
+		// - Move thread de EXEC para BLOQ:
+		// Recupera TCB da thread em EXEC
+		TCB_t *tcb = get_tcb(&EXEC);
+		if(tcb == NULL){
+			printf("cwait(): get_tcb(&EXEC); failed!\n");
+			return ERROR;
+		}
+
+		// Move thread de EXEC para BLOQ
+		if(move_thread(&EXEC,&BLOQ,PROCST_BLOQ) != SUCCESS){
+			printf("cwait(): move_thread(&EXEC,&BLOQ,PROCST_BLOQ) failed!\n");
+			return ERROR;
+		}
+
+		// - Adiciona tid da thread bloqueada na fila do semaforo:
+		// Aloca memoria pra o tid
+		int *tid = (int*)malloc(sizeof(int));
+		if(tid == NULL){
+			printf("cwait(): (int*)malloc(sizeof(int)) failed!\n");
+			return ERROR;
+		}
+		*tid = tcb->tid;
+
+		// Aloca memoria para o node da fila do semaforo
+		PNODE2 nodeFila = (PNODE2)malloc(sizeof(NODE2));
+		if(nodeFila == NULL){
+			printf("cwait(): malloc(sizeof(NODE2)) failed!\n");
+			return ERROR;
+		}    
+		nodeFila->node = tid;
+
+		// Adiciona o node na fila
+		if(AppendFila2(sem->fila,nodeFila) != SUCCESS){
+			printf("cwait(): AppendFila2(&(sem->fila),nodeFila) failed!\n");
+	  		return ERROR;
+		}
+
+		// Salva contexto da thread
+		if(getcontext(&(tcb->context)) == ERROR){
+			printf("cwait(): getcontext(&(tcb->context)) failed!\n");
+			return ERROR;
+		}
+
+		// Fila EXEC liberada, chama o escalonador
+		if(FirstFila2(&EXEC) != SUCCESS)
+			setcontext(&sched_ctx);
+
+	}
+
+	// Thread retoma execucao
+	return SUCCESS;
+
+}
+//========================
 
 
+int csignal(csem_t *sem){
+	// Inicializa cthread caso nao esteja
+	if(!CTHREAD_INIT)
+		if(init() == ERROR){
+        	printf("ccreate(): init() failed!\n");
+	    	return ERROR;		
+		}
 
+	// Incrementa semaforo indicando liberado de recurso
+	sem->count = sem->count + 1;
+
+
+	// Recupera o node do inicio da fila do semaforo.
+	// Se fila vazia, retorna (nao ha thread para desbloquear)
+	if(FirstFila2(sem->fila) != SUCCESS){
+    	//printf("csignal(): FirstFila2(sem->fila) failed!\n");
+		return SUCCESS;
+	}	
+	
+	// Ha thread bloqueada. Recupera o primeiro tid da fila
+	PNODE2 nodeFila;
+	int *tid;
+	nodeFila = GetAtIteratorFila2(sem->fila);
+	if(nodeFila == NULL){
+		printf("csignal(): GetAtIteratorFila2(sem->fila) failed!\n");
+		return ERROR;
+	}
+   	tid = nodeFila->node;
+
+	// Caso tid esteja em BLOQ, move para APTO
+	if(check_tid(*tid,&BLOQ,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
+		if(move_thread_bytid(*tid,&BLOQ,&APTO,PROCST_APTO) != SUCCESS){
+			printf("csignal(): move_thread_bytid(*tid,&BLOQ,&APTO,PROCST_APTO) failed!\n");
+			return ERROR;
+		}
+	}
+	// Caso tid esteja em BLOQ_SUS, move para APTO_SUS
+	else{
+		if(check_tid(*tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
+			if(move_thread_bytid(*tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) != SUCCESS){
+				printf("csignal(): move_thread_bytid(*tid,&BLOQ_SUS,&APTO_SUS,PROCST_APTO_SUS) failed!\n");
+				return ERROR;
+			}
+		}
+		// Nao econtrou a thread bloqueada nas filas: estados inconsistentes!
+		else return ERROR;		
+	}
+
+	// Libera node da fila do semaforo
+	if(DeleteAtIteratorFila2(sem->fila) != SUCCESS){
+		printf("csignal(): DeleteAtIteratorFila2(sem->fila) failed!\n");
+		return ERROR;
+	}
+	
+	return SUCCESS;
+}
+//========================
 
 
 

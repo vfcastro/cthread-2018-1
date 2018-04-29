@@ -2,12 +2,14 @@
 #include <stdio.h>
 
 void func1(int *tid) {
+	printf("Eu sou a thread ID %d comecando\n", tid[0]);
 	printf("Eu sou a thread ID %d suspendendo a thread ID %d\n", tid[0], tid[1]);
-	csuspend(tid[1]);
+	printf("Eu sou a thread ID %d retorno csuspend(%d): %d\n",tid[0],tid[1],csuspend(tid[1]));
 	printf("Eu sou a thread ID %d terminando\n", tid[0]);
 }
 
 void func2(int *tid) {
+	printf("Eu sou a thread ID %d comecando\n", tid[1]);
 	printf("Eu sou a thread ID %d terminando\n", tid[1]);
 }
 
@@ -21,9 +23,8 @@ int main(){
 	printf("main(): id2: %d\n",tid[1]);
 
 	printf("main(): cjoin(%d)\n",tid[0]);
-	cjoin(tid[0]);
-	
- 	printf("main(): retorno\n");	
+	printf("main(): retorno cjoin(): %d\n",cjoin(tid[0]));	
+ 	printf("main(): fim\n");	
 
     return 0;
 }

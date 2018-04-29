@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
              fprintf(fp, "%d %d %d \n", (workload[i].region[r]>>5) & 6,
                                         (workload[i].region[r]>>3)& 7,
                                         workload[i].region[r] & 7  );
-           free(workload[i].region);
+           //free(workload[i].region);
        }
     }
 

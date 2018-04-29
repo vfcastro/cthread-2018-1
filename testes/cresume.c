@@ -21,15 +21,17 @@ int main(){
 	printf("main(): id2: %d\n",tid[1]);
 
 	printf("main(): cjoin(%d)\n",tid[0]);
-	cjoin(tid[0]);
+	printf("main(): retorno cjoin(%d): %d\n",tid[0],cjoin(tid[0]));
+	
 
 	printf("main(): cresume(%d)\n",tid[1]);
-	cresume(tid[1]);
-
-	printf("main(): cjoin(%d)\n",tid[1]);
-	cjoin(tid[1]);
+	printf("main(): retorno cresume(%d): %d\n",tid[1],cresume(tid[1]));
 	
- 	printf("main(): retorno\n");	
+	printf("main(): cjoin(%d)\n",tid[1]);
+	printf("main(): retorno cjoin(%d): %d\n",tid[1],cjoin(tid[1]));
+	
+	
+ 	printf("main(): fim\n");	
 
     return 0;
 }

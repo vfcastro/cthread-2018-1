@@ -4,8 +4,7 @@
 int main(){
 	
   printf("main(): cyield()\n");
-  cyield();
-  printf("main(): retorno cyield()\n");	
+  printf("main(): retorno cyield(): %d\n",cyield());	
   
 
 

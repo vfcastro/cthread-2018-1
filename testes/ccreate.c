@@ -17,8 +17,8 @@ int main(){
 	id1 = ccreate((void *(*)(void*))func1, (void*)&id1, 0);
 	printf("main(): id1: %d\n",id1);
 
-	cyield();
- 	printf("main(): retorno cyield()\n");	
+	printf("main(): cyield()\n");
+	printf("main(): retorno cyield(): %d\n",cyield());	
 
     return 0;
 }

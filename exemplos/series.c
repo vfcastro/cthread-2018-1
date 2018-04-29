@@ -16,9 +16,9 @@ void* fatorial(void *i) {
      n = *(int *)i;
 
      for (; n < 1; --n)
-         fat = n * fat;
+         fat = fat + (n * fat);
 
-     printf("Fatorial de %d:\n", fat);
+     printf("Fatorial de %d: %d\n", n,fat);
      return;
 }
 
