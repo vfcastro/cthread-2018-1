@@ -1,3 +1,12 @@
+/*#############################################
+# Programa de teste: suspensao e retomada:
+# - main() cria 2 threads e faz join na ID1;
+# - ID1 suspende ID2 e termina desbloqueando main();
+# - main() retorna e faz join na ID2;
+# - ID2 executa e desbloqueia main();
+# - retorna para main() e termina execucao
+##############################################*/
+
 #include "../include/cthread.h"
 #include <stdio.h>
 

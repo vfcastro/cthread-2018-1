@@ -1,3 +1,12 @@
+/*#############################################
+# Programa de teste: suspensao e retomada:
+# - main() cria 2 threads e faz join na ID1;
+# - ID1 suspende ID2 e termina desbloqueando main();
+# - main() retorna e faz join na ID2 (suspensa);
+# - erro de execucao, pois nao ha thread em apto
+#   para ser escalonada (apenas em apto-suspenso)
+##############################################*/
+
 #include "../include/cthread.h"
 #include <stdio.h>
 
@@ -24,6 +33,9 @@ int main(){
 
 	printf("main(): cjoin(%d)\n",tid[0]);
 	printf("main(): retorno cjoin(): %d\n",cjoin(tid[0]));	
+
+	printf("main(): cjoin(%d)\n",tid[1]);
+	printf("main(): cjoin(%d): %d\n",tid[1],cjoin(tid[1]));
  	printf("main(): fim\n");	
 
     return 0;

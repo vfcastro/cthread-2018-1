@@ -1,3 +1,8 @@
+/*#############################################
+# Programa de teste: liberacao voluntaria(cyield):
+# - main() faz cyield e retorna execucao para si
+##############################################*/
+
 #include "../include/cthread.h"
 #include <stdio.h>
 

@@ -1,3 +1,10 @@
+/*#############################################
+# Programa de teste: criacao de threads:
+# - main() cria 2 thread e libera a CPU (cyield);
+# - as duas threads executam;
+# - retorna para main() e termina execucao
+##############################################*/
+
 #include "../include/cthread.h"
 #include <stdio.h>
 

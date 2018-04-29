@@ -1,3 +1,12 @@
+/*#############################################
+# Programa de teste: sincronizacao de termino:
+# - main() cria 2 threads e faz join na ID1;
+# - ID1 executa e faz join na ID2;
+# - ID2 termina e desbloqueia ID1;
+# - ID1 termina e desbloqueia main();
+# - retorna para main() e termina execucao
+##############################################*/
+
 #include "../include/cthread.h"
 #include <stdio.h>
 

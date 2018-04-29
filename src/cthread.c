@@ -571,7 +571,7 @@ int csuspend(int tid){
 	// Inicializa cthread caso nao esteja
 	if(!CTHREAD_INIT){
 		if(init() == ERROR){
-        	printf("cjoin(): init() failed!\n");
+        	printf("csuspend(): init() failed!\n");
 	    	return ERROR;		
 		}
 	}
@@ -606,7 +606,7 @@ int cresume(int tid){
 	// Inicializa cthread caso nao esteja
 	if(!CTHREAD_INIT){
 		if(init() == ERROR){
-        	printf("cjoin(): init() failed!\n");
+        	printf("cresume(): init() failed!\n");
 	    	return ERROR;		
 		}
 	}
@@ -615,7 +615,7 @@ int cresume(int tid){
 	if(check_tid(tid,&APTO_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 		// Encontrou o tid na fila APTO_SUS. Move para fila APTO
 		if(move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) == ERROR){
-			printf("csuspend(): move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) failed!\n");
+			printf("cresume(): move_thread_bytid(tid,&APTO_SUS,&APTO,PROCST_APTO) failed!\n");
 			return ERROR;
 		}
 		else return SUCCESS;
@@ -625,7 +625,7 @@ int cresume(int tid){
 	if(check_tid(tid,&BLOQ_SUS,SEARCH_BLOQ_JOIN_FALSE,SEARCH_BLOQ_SEM_FALSE) == SUCCESS){
 		// Encontrou o tid na fila BLOQ_SUS. Move para fila BLOQ
 		if(move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) == ERROR){
-			printf("csuspend(): move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) failed!\n");
+			printf("cresume(): move_thread_bytid(tid,&BLOQ_SUS,&BLOQ,PROCST_BLOQ) failed!\n");
 			return ERROR;
 		}
 		else return SUCCESS;
@@ -642,7 +642,7 @@ int csem_init(csem_t *sem, int count){
 	// Inicializa cthread caso nao esteja
 	if(!CTHREAD_INIT)
 		if(init() == ERROR){
-        	printf("ccreate(): init() failed!\n");
+        	printf("csem_init(): init() failed!\n");
 	    	return ERROR;		
 		}	
 
@@ -670,7 +670,7 @@ int cwait(csem_t *sem){
 	// Inicializa cthread caso nao esteja
 	if(!CTHREAD_INIT)
 		if(init() == ERROR){
-        	printf("ccreate(): init() failed!\n");
+        	printf("cwait(): init() failed!\n");
 	    	return ERROR;		
 		}
 
@@ -745,11 +745,11 @@ int csignal(csem_t *sem){
 	// Inicializa cthread caso nao esteja
 	if(!CTHREAD_INIT)
 		if(init() == ERROR){
-        	printf("ccreate(): init() failed!\n");
+        	printf("csignal(): init() failed!\n");
 	    	return ERROR;		
 		}
 
-	// Incrementa semaforo indicando liberado de recurso
+	// Incrementa semaforo indicando liberacao de recurso
 	sem->count = sem->count + 1;
 
 
@@ -797,12 +797,4 @@ int csignal(csem_t *sem){
 	
 	return SUCCESS;
 }
-//========================
-
-
-
-
-
-
-
-		
+//========================		
